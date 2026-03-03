@@ -1,7 +1,7 @@
 {
   "version": 2,
   "buildCommand": "pnpm build",
-  "installCommand": "corepack enable && corepack prepare pnpm@10.4.1 --activate && pnpm install --no-frozen-lockfile",
+  "installCommand": "pnpm install --no-frozen-lockfile",
   "builds": [
     {
       "src": "api/index.ts",
