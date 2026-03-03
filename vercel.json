@@ -1,25 +1,19 @@
 {
   "version": 2,
-  "buildCommand": "pnpm build",
   "installCommand": "pnpm install --no-frozen-lockfile",
+  "buildCommand": "pnpm build",
   "builds": [
     {
       "src": "api/index.ts",
       "use": "@vercel/node",
       "config": {
         "includeFiles": [
-          "dist/public/**",
-          "dist/public/index.html",
-          "dist/public/assets/**"
+          "dist/public/**"
         ]
       }
     }
   ],
   "routes": [
-    {
-      "src": "/assets/(.*)",
-      "dest": "/api/index.ts"
-    },
     {
       "src": "/api/(.*)",
       "dest": "/api/index.ts"

@@ -1,57 +1,59 @@
+// This file is the Vercel serverless entry point.
+// It imports the pre-built Express app from dist/index.js
+// The build command (pnpm build) compiles server/_core/index.ts → dist/index.js via esbuild
+// @vercel/node will transpile this file and resolve the import at runtime
+
+// We need to export the Express app as the default export for Vercel
+// Since dist/index.js starts the server directly, we need a separate app export
+
 import "dotenv/config";
-import express from "express";
+import express, { type Request, type Response, type NextFunction } from "express";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { registerOAuthRoutes } from "../server/_core/oauth";
-import { registerChatRoutes } from "../server/_core/chat";
 import { appRouter } from "../server/routers";
 import { createContext } from "../server/_core/context";
+import { registerOAuthRoutes } from "../server/_core/oauth";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// Configure body parser
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-// OAuth callback
+// OAuth routes
 registerOAuthRoutes(app);
 
-// Chat API
-registerChatRoutes(app);
-
-// tRPC API
+// tRPC
 app.use(
   "/api/trpc",
-  createExpressMiddleware({
-    router: appRouter,
-    createContext,
-  })
+  createExpressMiddleware({ router: appRouter, createContext })
 );
 
-// Serve static frontend files
-// In Vercel, the api/ folder is at the root, and dist/public is built alongside it
+// Static files — dist/public is built by vite build and included via includeFiles
 const distPath = path.resolve(__dirname, "..", "dist", "public");
-
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
-  // SPA fallback — serve index.html for all non-API routes
-  app.use("*", (_req, res) => {
-    const indexPath = path.resolve(distPath, "index.html");
-    if (fs.existsSync(indexPath)) {
-      res.sendFile(indexPath);
-    } else {
-      res.status(404).send("index.html not found. Build may be incomplete.");
-    }
-  });
-} else {
-  app.use("*", (_req, res) => {
-    res.status(503).send(`Static files not found at ${distPath}. Build may be incomplete.`);
-  });
 }
+
+// SPA fallback
+app.use("*", (_req: Request, res: Response) => {
+  const indexPath = path.resolve(distPath, "index.html");
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.status(200).send(`
+      <!DOCTYPE html>
+      <html><body>
+        <h2>Flowtech POS</h2>
+        <p>Static files not found at: ${distPath}</p>
+        <p>Build may be incomplete. Please check Vercel build logs.</p>
+      </body></html>
+    `);
+  }
+});
 
 export default app;
