@@ -22,21 +22,38 @@ import {
   Users,
   Utensils,
   Zap,
+  Menu,
 } from "lucide-react";
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
-import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
-const NAV_ITEMS = [
-  { icon: LayoutGrid, label: "Tables", path: "/pos/tables", roles: ["admin", "manager", "cashier"] },
-  { icon: ClipboardList, label: "Orders", path: "/pos/orders", roles: ["admin", "manager", "cashier"] },
-  { icon: Utensils, label: "Menu", path: "/pos/menu", roles: ["admin", "manager"] },
-  { icon: BarChart3, label: "Analytics", path: "/pos/analytics", roles: ["admin", "manager"] },
-  { icon: FileText, label: "Reports", path: "/pos/reports", roles: ["admin", "manager"] },
-  { icon: Users, label: "Staff", path: "/pos/staff", roles: ["admin"] },
-  { icon: ShieldCheck, label: "Audit Log", path: "/pos/audit", roles: ["admin"] },
-  { icon: Settings, label: "Settings", path: "/pos/settings", roles: ["admin"] },
+// ── Categorized Navigation ──────────────────────────────────────────────────
+const NAV_CATEGORIES = [
+  {
+    label: "Operations",
+    items: [
+      { icon: LayoutGrid, label: "Tables", path: "/pos/tables", roles: ["admin", "manager", "cashier"] },
+      { icon: ClipboardList, label: "Orders", path: "/pos/orders", roles: ["admin", "manager", "cashier"] },
+      { icon: Utensils, label: "Menu", path: "/pos/menu", roles: ["admin", "manager"] },
+    ],
+  },
+  {
+    label: "Insights",
+    items: [
+      { icon: BarChart3, label: "Analytics", path: "/pos/analytics", roles: ["admin", "manager"] },
+      { icon: FileText, label: "Reports", path: "/pos/reports", roles: ["admin", "manager"] },
+    ],
+  },
+  {
+    label: "Administration",
+    items: [
+      { icon: Users, label: "Staff", path: "/pos/staff", roles: ["admin"] },
+      { icon: ShieldCheck, label: "Audit Log", path: "/pos/audit", roles: ["admin"] },
+      { icon: Settings, label: "Settings", path: "/pos/settings", roles: ["admin"] },
+    ],
+  },
 ];
 
 interface POSLayoutProps {
@@ -48,6 +65,8 @@ export default function POSLayout({ children, title }: POSLayoutProps) {
   const { user, logout } = useAuth();
   const { activeTenant, tenants, setActiveTenant, role } = useTenant();
   const [location, navigate] = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
   const logoutMutation = trpc.auth.logout.useMutation({
     onSuccess: () => {
       logout();
@@ -55,29 +74,41 @@ export default function POSLayout({ children, title }: POSLayoutProps) {
     },
   });
 
-  const visibleNav = NAV_ITEMS.filter((item) => role && item.roles.includes(role));
-
   return (
     <div className="flex h-screen bg-background overflow-hidden">
       {/* ── Sidebar ── */}
-      <aside className="w-56 flex-shrink-0 flex flex-col border-r border-border/50 bg-sidebar">
-        {/* Logo */}
-        <div className="h-14 flex items-center px-4 border-b border-sidebar-border">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">
+      <aside
+        className={cn(
+          "flex-shrink-0 flex flex-col border-r border-border/50 bg-sidebar transition-all duration-200",
+          sidebarOpen ? "w-56" : "w-14"
+        )}
+      >
+        {/* Logo + Toggle */}
+        <div className="h-14 flex items-center px-3 border-b border-sidebar-border justify-between">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center flex-shrink-0">
               <Zap className="w-3.5 h-3.5 text-primary-foreground" />
             </div>
-            <span
-              className="font-bold text-sidebar-foreground"
-              style={{ fontFamily: "'Playfair Display', serif" }}
-            >
-              Flowtech
-            </span>
+            {sidebarOpen && (
+              <span
+                className="font-bold text-sidebar-foreground truncate"
+                style={{ fontFamily: "'Playfair Display', serif" }}
+              >
+                Flowtech
+              </span>
+            )}
           </div>
+          <button
+            onClick={() => setSidebarOpen((v) => !v)}
+            className="p-1 rounded hover:bg-sidebar-accent text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors flex-shrink-0"
+            title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+          >
+            <Menu className="w-4 h-4" />
+          </button>
         </div>
 
         {/* Tenant Switcher */}
-        {activeTenant && (
+        {activeTenant && sidebarOpen && (
           <div className="px-3 py-3 border-b border-sidebar-border">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -120,44 +151,92 @@ export default function POSLayout({ children, title }: POSLayoutProps) {
           </div>
         )}
 
-        {/* Navigation */}
-        <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
-          {visibleNav.map((item) => {
-            const isActive = location.startsWith(item.path);
+        {/* Collapsed tenant icon */}
+        {activeTenant && !sidebarOpen && (
+          <div className="px-2 py-3 border-b border-sidebar-border flex justify-center">
+            <div className="w-8 h-8 rounded bg-primary/20 flex items-center justify-center" title={activeTenant.tenant.name}>
+              <Store className="w-4 h-4 text-primary" />
+            </div>
+          </div>
+        )}
+
+        {/* Categorized Navigation */}
+        <nav className="flex-1 px-2 py-3 overflow-y-auto space-y-4">
+          {NAV_CATEGORIES.map((category) => {
+            const visibleItems = category.items.filter(
+              (item) => role && item.roles.includes(role)
+            );
+            if (visibleItems.length === 0) return null;
+
             return (
-              <button
-                key={item.path}
-                onClick={() => navigate(item.path)}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-all duration-150 ${
-                  isActive
-                    ? "bg-primary/15 text-primary font-medium"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                }`}
-              >
-                <item.icon className={`w-4 h-4 flex-shrink-0 ${isActive ? "text-primary" : ""}`} />
-                {item.label}
-              </button>
+              <div key={category.label}>
+                {/* Category Label */}
+                {sidebarOpen && (
+                  <div className="px-3 mb-1">
+                    <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 select-none">
+                      {category.label}
+                    </span>
+                  </div>
+                )}
+                {!sidebarOpen && (
+                  <div className="border-t border-sidebar-border/50 mx-2 mb-1" />
+                )}
+
+                {/* Items */}
+                <div className="space-y-0.5">
+                  {visibleItems.map((item) => {
+                    const isActive = location.startsWith(item.path);
+                    return (
+                      <button
+                        key={item.path}
+                        onClick={() => navigate(item.path)}
+                        title={!sidebarOpen ? item.label : undefined}
+                        className={cn(
+                          "w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-all duration-150",
+                          !sidebarOpen && "justify-center px-2",
+                          isActive
+                            ? "bg-primary/15 text-primary font-medium"
+                            : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        )}
+                      >
+                        <item.icon
+                          className={cn(
+                            "w-4 h-4 flex-shrink-0",
+                            isActive ? "text-primary" : ""
+                          )}
+                        />
+                        {sidebarOpen && item.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             );
           })}
         </nav>
 
-        {/* User */}
+        {/* User Footer */}
         <div className="p-3 border-t border-sidebar-border">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="w-full justify-start gap-2 h-auto py-2 px-2 text-sidebar-foreground hover:bg-sidebar-accent"
+                className={cn(
+                  "w-full h-auto py-2 text-sidebar-foreground hover:bg-sidebar-accent",
+                  sidebarOpen ? "justify-start gap-2 px-2" : "justify-center px-1"
+                )}
               >
                 <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
                   <span className="text-xs font-semibold text-primary">
                     {user?.name?.[0]?.toUpperCase() ?? "U"}
                   </span>
                 </div>
-                <div className="text-left min-w-0">
-                  <div className="text-xs font-medium truncate">{user?.name ?? "User"}</div>
-                  <div className="text-[10px] text-muted-foreground truncate">{user?.email}</div>
-                </div>
+                {sidebarOpen && (
+                  <div className="text-left min-w-0">
+                    <div className="text-xs font-medium truncate">{user?.name ?? "User"}</div>
+                    <div className="text-[10px] text-muted-foreground truncate">{user?.email}</div>
+                  </div>
+                )}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-48">
