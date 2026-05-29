@@ -1,17 +1,17 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Plus, Pencil, Trash2, Package, ArrowLeft, Save, X } from 'lucide-react';
+import { Loader2, Plus, Pencil, Trash2, Package, ArrowLeft, Save, X, Upload, ImageIcon } from 'lucide-react';
 
-const CATS = ['raw-food', 'grooming', 'supplements'];
+const CATS = ['raw-food', 'grooming', 'supplements', 'treats'];
 const DELIVERY_TYPES = [
-  { id: 'cold_chain', label: '❄️ Cold Chain (Raw Food — 70km only)' },
-  { id: 'standard', label: '📦 Standard (Nationwide J&T/LBC)' },
-  { id: 'international', label: '✈️ International' },
+  { id: 'cold_chain',    label: '❄️ Cold Chain',    sub: 'Raw food — Metro Manila & Cavite only (70km)' },
+  { id: 'standard',      label: '📦 Standard',      sub: 'Nationwide via J&T / LBC' },
+  { id: 'international', label: '✈️ International', sub: 'International shipping' },
 ];
 const peso = n => `₱${Number(n).toLocaleString()}`;
-const EMPTY_PRODUCT = { name: '', description: '', category: 'raw-food', delivery_type: 'cold_chain', emoji: '🐾', is_active: true };
 const EMPTY_VARIANT = { label: '', retail_price: '', weight_grams: '', stock_qty: '', is_active: true };
+const EMPTY_FORM = { name: '', description: '', category: 'raw-food', delivery_type: 'cold_chain', emoji: '🥩', is_active: true };
 
 export default function AdminProductsPage() {
   const router = useRouter();
@@ -19,11 +19,16 @@ export default function AdminProductsPage() {
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('list');
   const [editProduct, setEditProduct] = useState(null);
-  const [form, setForm] = useState(EMPTY_PRODUCT);
+  const [form, setForm] = useState(EMPTY_FORM);
   const [variants, setVariants] = useState([{ ...EMPTY_VARIANT }]);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [existingImages, setExistingImages] = useState([]);
+  const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(null);
   const [error, setError] = useState('');
+  const fileRef = useRef();
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -39,19 +44,26 @@ export default function AdminProductsPage() {
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
   const openNew = () => {
-    setForm(EMPTY_PRODUCT);
-    setVariants([{ ...EMPTY_VARIANT }]);
-    setEditProduct(null);
-    setError('');
-    setView('form');
+    setForm(EMPTY_FORM); setVariants([{ ...EMPTY_VARIANT }]);
+    setImageFile(null); setImagePreview(null); setExistingImages([]);
+    setEditProduct(null); setError(''); setView('form');
   };
 
   const openEdit = (p) => {
-    setForm({ name: p.name, description: p.description || '', category: p.category, delivery_type: p.delivery_type, emoji: p.emoji || '🐾', is_active: p.is_active });
-    setVariants(p.product_variants?.length ? p.product_variants.map(v => ({ label: v.label, retail_price: v.retail_price, weight_grams: v.weight_grams || '', stock_qty: v.stock_qty || '', is_active: v.is_active })) : [{ ...EMPTY_VARIANT }]);
-    setEditProduct(p);
-    setError('');
-    setView('form');
+    setForm({ name: p.name, description: p.description || '', category: p.category, delivery_type: p.delivery_type, emoji: p.emoji || '🥩', is_active: p.is_active });
+    setVariants(p.product_variants?.length ? p.product_variants.map(v => ({ label: v.label, retail_price: v.retail_price, weight_grams: v.weight_grams || '', stock_qty: v.stock_qty || 0, is_active: v.is_active })) : [{ ...EMPTY_VARIANT }]);
+    setExistingImages(p.product_images || []);
+    setImageFile(null); setImagePreview(null);
+    setEditProduct(p); setError(''); setView('form');
+  };
+
+  const handleImageSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => setImagePreview(ev.target.result);
+    reader.readAsDataURL(file);
   };
 
   const addVariant = () => setVariants(v => [...v, { ...EMPTY_VARIANT }]);
@@ -62,10 +74,26 @@ export default function AdminProductsPage() {
     if (!form.name || !form.category) { setError('Name and category required.'); return; }
     const validVariants = variants.filter(v => v.label && v.retail_price);
     if (!validVariants.length) { setError('Add at least one variant with label and price.'); return; }
-
     setSaving(true); setError('');
+
+    let imageUrl = null;
+    if (imageFile) {
+      setUploading(true);
+      const fd = new FormData();
+      fd.append('file', imageFile);
+      fd.append('key', `product_img_${Date.now()}`);
+      const upRes = await fetch('/api/admin/upload', { method: 'POST', body: fd });
+      const upData = await upRes.json();
+      if (upData.success) imageUrl = upData.url;
+      setUploading(false);
+    }
+
     const method = editProduct ? 'PUT' : 'POST';
-    const body = { ...form, variants: validVariants.map(v => ({ ...v, retail_price: Number(v.retail_price), weight_grams: Number(v.weight_grams) || 0, stock_qty: Number(v.stock_qty) || 0 })) };
+    const body = {
+      ...form,
+      variants: validVariants.map(v => ({ ...v, retail_price: Number(v.retail_price), weight_grams: Number(v.weight_grams) || 0, stock_qty: Number(v.stock_qty) || 0 })),
+      ...(imageUrl ? { images: [imageUrl] } : {}),
+    };
     if (editProduct) body.id = editProduct.id;
 
     const res = await fetch('/api/admin/products', { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -76,100 +104,154 @@ export default function AdminProductsPage() {
     setSaving(false);
   };
 
+  const toggleAvailability = async (p) => {
+    await fetch('/api/admin/products', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: p.id, is_active: !p.is_active })
+    });
+    setProducts(prev => prev.map(x => x.id === p.id ? { ...x, is_active: !p.is_active } : x));
+  };
+
   const deleteProduct = async (id) => {
-    if (!confirm('Archive this product?')) return;
+    if (!confirm('Archive this product? It will be hidden from the store.')) return;
     setDeleting(id);
     await fetch('/api/admin/products', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
     await fetchProducts();
     setDeleting(null);
   };
 
-  // ── Form view ──
+  // ── FORM VIEW ──
   if (view === 'form') return (
     <div className="p-6 max-w-3xl">
-      <div className="flex items-center gap-4 mb-8">
-        <button onClick={() => setView('list')} className="p-2 border border-gray-200 rounded-xl text-gray-500 hover:border-gray-400 transition-colors"><ArrowLeft size={16} /></button>
-        <h1 className="text-xl font-bold text-gray-900">{editProduct ? 'Edit Product' : 'New Product'}</h1>
+      <div className="flex items-center gap-3 mb-8">
+        <button onClick={() => setView('list')} className="p-2 border border-gray-200 rounded-xl text-gray-400 hover:text-gray-700 hover:border-gray-400 transition-colors">
+          <ArrowLeft size={16} />
+        </button>
+        <div>
+          <h2 className="font-bold text-gray-900">{editProduct ? 'Edit Product' : 'New Product'}</h2>
+          {editProduct && <p className="text-xs text-gray-400">{editProduct.name}</p>}
+        </div>
       </div>
+
       <div className="space-y-5">
+        {/* Availability toggle */}
+        <div className="flex items-center justify-between bg-gray-50 rounded-2xl px-5 py-4 border border-gray-100">
+          <div>
+            <p className="font-semibold text-sm text-gray-900">Availability</p>
+            <p className="text-xs text-gray-400">{form.is_active ? '✓ Visible in store — customers can shop' : '✗ Hidden from store'}</p>
+          </div>
+          <button onClick={() => set('is_active', !form.is_active)}
+            className={`relative w-12 h-6 rounded-full transition-colors ${form.is_active ? 'bg-green-500' : 'bg-gray-200'}`}>
+            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all duration-200 ${form.is_active ? 'left-7' : 'left-1'}`} />
+          </button>
+        </div>
+
+        {/* Image upload */}
+        <div>
+          <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Product Image</label>
+          <div className="flex items-start gap-4">
+            <div onClick={() => fileRef.current?.click()}
+              className="w-28 h-28 rounded-2xl border-2 border-dashed border-gray-200 hover:border-[#C9A84C]/50 flex items-center justify-center cursor-pointer transition-all bg-gray-50 hover:bg-[#FBF7EE] overflow-hidden flex-shrink-0">
+              {imagePreview ? (
+                <img src={imagePreview} alt="preview" className="w-full h-full object-cover" />
+              ) : existingImages?.[0] ? (
+                <img src={existingImages[0].image_url} alt="existing" className="w-full h-full object-cover" />
+              ) : (
+                <div className="text-center p-3">
+                  <ImageIcon size={20} className="text-gray-300 mx-auto mb-1" />
+                  <span className="text-[10px] text-gray-400">Click to upload</span>
+                </div>
+              )}
+            </div>
+            <div className="flex-1">
+              <button onClick={() => fileRef.current?.click()}
+                className="flex items-center gap-2 bg-[#0A0A0A] hover:bg-gray-800 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-colors mb-2.5">
+                <Upload size={13} />
+                {imagePreview || existingImages?.[0] ? 'Replace Image' : 'Upload Image'}
+              </button>
+              <p className="text-xs text-gray-400 leading-relaxed">JPG, PNG, WEBP · Max 5MB<br />Recommended: 800×800 square</p>
+              {imageFile && <p className="text-[11px] text-green-600 mt-1.5 font-medium">✓ {imageFile.name} ready to upload</p>}
+            </div>
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
+          </div>
+        </div>
+
+        {/* Name + category + emoji */}
         <div className="grid sm:grid-cols-2 gap-4">
           <div className="sm:col-span-2">
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Product Name *</label>
+            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Product Name *</label>
             <input value={form.name} onChange={e => set('name', e.target.value)}
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:border-gray-400 transition-colors"
-              placeholder="e.g. Raw Chicken Mix" />
+              placeholder="e.g. Supero Mix" />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Category *</label>
+            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Category *</label>
             <select value={form.category} onChange={e => set('category', e.target.value)}
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:border-gray-400 bg-white transition-colors">
               {CATS.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Emoji</label>
+            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Emoji</label>
             <input value={form.emoji} onChange={e => set('emoji', e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:border-gray-400 transition-colors"
-              placeholder="🐾" />
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:border-gray-400 transition-colors" placeholder="🥩" />
           </div>
           <div className="sm:col-span-2">
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Delivery Type *</label>
+            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Delivery Type *</label>
             <div className="space-y-2">
               {DELIVERY_TYPES.map(d => (
-                <label key={d.id} className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 cursor-pointer transition-colors
-                  ${form.delivery_type === d.id ? 'border-[#0A0A0A] bg-gray-50' : 'border-gray-100'}`}>
+                <label key={d.id} className={`flex items-center gap-4 px-4 py-3.5 rounded-xl border-2 cursor-pointer transition-all
+                  ${form.delivery_type === d.id ? 'border-[#0A0A0A] bg-gray-50' : 'border-gray-100 hover:border-gray-200'}`}>
                   <input type="radio" name="delivery_type" value={d.id} checked={form.delivery_type === d.id} onChange={e => set('delivery_type', e.target.value)} className="accent-black" />
-                  <span className="text-sm font-medium">{d.label}</span>
+                  <div>
+                    <div className="text-sm font-semibold text-gray-900">{d.label}</div>
+                    <div className="text-xs text-gray-400">{d.sub}</div>
+                  </div>
                 </label>
               ))}
             </div>
           </div>
           <div className="sm:col-span-2">
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Description</label>
+            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Description</label>
             <textarea value={form.description} onChange={e => set('description', e.target.value)} rows={3}
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm resize-none focus:border-gray-400 transition-colors"
-              placeholder="Product description..." />
+              placeholder="Ingredients, key benefits, feeding notes..." />
           </div>
         </div>
 
         {/* Variants */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Variants & Pricing *</label>
-            <button onClick={addVariant} className="text-xs text-[#C9A84C] hover:underline flex items-center gap-1"><Plus size={12} /> Add variant</button>
+            <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Variants & Pricing *</label>
+            <button onClick={addVariant} className="text-xs text-[#C9A84C] font-semibold hover:underline flex items-center gap-1">
+              <Plus size={12} /> Add variant
+            </button>
           </div>
           <div className="space-y-3">
             {variants.map((v, i) => (
-              <div key={i} className="grid grid-cols-4 gap-3 bg-gray-50 rounded-xl p-4 relative">
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Size/Label</label>
-                  <input value={v.label} onChange={e => setVariant(i, 'label', e.target.value)}
-                    placeholder="500g, 1 kg…"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-gray-400 transition-colors bg-white" />
+              <div key={i} className="bg-gray-50 border border-gray-100 rounded-2xl p-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+                  {[['label','Size / Label','1 kg, 500g…','text'],['retail_price','Price (₱)','0','number'],['weight_grams','Weight (g)','1000','number'],['stock_qty','Stock','100','number']].map(([key,lbl,ph,type])=>(
+                    <div key={key}>
+                      <label className="block text-[10px] font-semibold text-gray-400 mb-1">{lbl}</label>
+                      <input type={type} value={v[key]} onChange={e => setVariant(i, key, e.target.value)} placeholder={ph}
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm bg-white focus:border-gray-400 transition-colors" />
+                    </div>
+                  ))}
                 </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Price (₱)</label>
-                  <input type="number" value={v.retail_price} onChange={e => setVariant(i, 'retail_price', e.target.value)}
-                    placeholder="0.00"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-gray-400 transition-colors bg-white" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 cursor-pointer" onClick={() => setVariant(i, 'is_active', !v.is_active)}>
+                    <div className={`w-9 h-5 rounded-full transition-colors flex items-center px-0.5 ${v.is_active ? 'bg-green-500' : 'bg-gray-300'}`}>
+                      <div className={`w-4 h-4 bg-white rounded-full shadow transition-all duration-200 ${v.is_active ? 'translate-x-4' : ''}`} />
+                    </div>
+                    <span className="text-xs text-gray-500">{v.is_active ? 'Available' : 'Unavailable'}</span>
+                  </div>
+                  {variants.length > 1 && (
+                    <button onClick={() => removeVariant(i)} className="text-xs text-red-400 hover:text-red-600 flex items-center gap-1 transition-colors">
+                      <X size={11} /> Remove
+                    </button>
+                  )}
                 </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Weight (g)</label>
-                  <input type="number" value={v.weight_grams} onChange={e => setVariant(i, 'weight_grams', e.target.value)}
-                    placeholder="500"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-gray-400 transition-colors bg-white" />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Stock</label>
-                  <input type="number" value={v.stock_qty} onChange={e => setVariant(i, 'stock_qty', e.target.value)}
-                    placeholder="0"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-gray-400 transition-colors bg-white" />
-                </div>
-                {variants.length > 1 && (
-                  <button onClick={() => removeVariant(i)} className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center">
-                    <X size={10} />
-                  </button>
-                )}
               </div>
             ))}
           </div>
@@ -177,69 +259,85 @@ export default function AdminProductsPage() {
 
         {error && <p className="text-sm text-red-500 bg-red-50 px-4 py-3 rounded-xl">{error}</p>}
 
-        <div className="flex gap-3 pt-2">
-          <button onClick={() => setView('list')} className="flex-1 border border-gray-200 text-gray-600 py-3 rounded-xl text-sm font-semibold hover:border-gray-400 transition-colors">Cancel</button>
-          <button onClick={save} disabled={saving}
-            className="flex-1 bg-[#0A0A0A] text-white py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors disabled:opacity-40">
-            {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-            {editProduct ? 'Save Changes' : 'Create Product'}
+        <div className="flex gap-3">
+          <button onClick={() => setView('list')} className="flex-1 border border-gray-200 text-gray-600 py-3.5 rounded-xl text-sm font-semibold hover:border-gray-400 transition-colors">Cancel</button>
+          <button onClick={save} disabled={saving || uploading}
+            className="flex-1 bg-[#0A0A0A] text-white py-3.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-gray-800 disabled:opacity-40 transition-colors">
+            {(saving||uploading) ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+            {uploading ? 'Uploading…' : saving ? 'Saving…' : editProduct ? 'Save Changes' : 'Create Product'}
           </button>
         </div>
       </div>
     </div>
   );
 
-  // ── List view ──
+  // ── LIST VIEW ──
   return (
-    <div className="p-6 max-w-6xl">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-
-          <h1 className="text-2xl font-bold text-gray-900">Products</h1>
-        </div>
-        <button onClick={openNew}
-          className="flex items-center gap-2 bg-[#0A0A0A] text-white text-sm font-bold px-5 py-2.5 rounded-xl hover:bg-gray-800 transition-colors">
+    <div className="p-6 max-w-5xl">
+      <div className="flex items-center justify-between mb-6">
+        <p className="text-sm text-gray-400">
+          <span className="font-semibold text-green-600">{products.filter(p=>p.is_active).length} live</span>
+          {' · '}
+          <span className="text-gray-400">{products.filter(p=>!p.is_active).length} hidden</span>
+        </p>
+        <button onClick={openNew} className="flex items-center gap-2 bg-[#0A0A0A] text-white text-sm font-bold px-5 py-2.5 rounded-xl hover:bg-gray-800 transition-colors">
           <Plus size={15} /> New Product
         </button>
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-20 text-gray-400 gap-3">
-          <Loader2 size={18} className="animate-spin" /> Loading…
+        <div className="flex items-center justify-center py-16 text-gray-400 gap-3">
+          <Loader2 size={18} className="animate-spin" />
         </div>
       ) : products.length === 0 ? (
-        <div className="text-center py-20 border-2 border-dashed border-gray-200 rounded-2xl">
-          <Package size={40} className="text-gray-300 mx-auto mb-4" />
+        <div className="text-center py-20 border-2 border-dashed border-gray-100 rounded-2xl">
+          <Package size={40} className="text-gray-200 mx-auto mb-4" />
           <p className="text-gray-500 font-medium mb-2">No products yet</p>
-          <p className="text-sm text-gray-400 mb-6">Add your first product to start selling</p>
-          <button onClick={openNew} className="text-sm text-[#C9A84C] hover:underline">Add Product →</button>
+          <button onClick={openNew} className="text-sm text-[#C9A84C] hover:underline">Add your first product →</button>
         </div>
       ) : (
         <div className="space-y-2">
-          {products.map(p => (
-            <div key={p.id} className="border border-gray-100 rounded-2xl px-5 py-4 flex items-center gap-4 hover:border-gray-200 transition-colors">
-              <div className="text-2xl w-10 text-center flex-shrink-0">{p.emoji || '🐾'}</div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <h3 className="font-semibold text-gray-900 text-sm truncate">{p.name}</h3>
-                  <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full flex-shrink-0">{p.category}</span>
-                  {p.delivery_type === 'cold_chain' && <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full flex-shrink-0">❄️</span>}
-                  {!p.is_active && <span className="text-xs bg-red-50 text-red-500 px-2 py-0.5 rounded-full flex-shrink-0">Archived</span>}
+          {products.map(p => {
+            const primaryImg = p.product_images?.find(i=>i.is_primary)?.image_url || p.product_images?.[0]?.image_url;
+            const activeVariants = p.product_variants?.filter(v=>v.is_active) || [];
+            const prices = activeVariants.map(v=>v.retail_price);
+            const priceRange = prices.length ? (prices.length===1 ? peso(prices[0]) : `${peso(Math.min(...prices))}–${peso(Math.max(...prices))}`) : 'No price';
+            return (
+              <div key={p.id} className={`flex items-center gap-4 px-5 py-4 rounded-2xl border transition-all
+                ${p.is_active ? 'border-gray-100 bg-white hover:border-gray-200' : 'border-gray-100 bg-gray-50 opacity-55'}`}>
+                {/* Image */}
+                <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0 border border-gray-100">
+                  {primaryImg
+                    ? <img src={primaryImg} alt={p.name} className="w-full h-full object-cover" />
+                    : <span className="text-xl">{p.emoji||'🐾'}</span>}
                 </div>
-                <p className="text-xs text-gray-400">
-                  {p.product_variants?.length || 0} variants ·{' '}
-                  {p.product_variants?.length ? `from ${peso(Math.min(...p.product_variants.map(v => v.retail_price)))}` : 'no pricing'}
-                </p>
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                    <span className="font-bold text-sm text-gray-900 truncate">{p.name}</span>
+                    <span className="text-xs bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full">{p.category}</span>
+                    {p.delivery_type==='cold_chain' && <span className="text-xs bg-blue-50 text-blue-500 px-2 py-0.5 rounded-full">❄️</span>}
+                  </div>
+                  <p className="text-xs text-gray-400">{activeVariants.length} variants · {priceRange}</p>
+                </div>
+                {/* Availability toggle */}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <span className={`text-xs font-semibold ${p.is_active?'text-green-600':'text-gray-400'}`}>{p.is_active?'Live':'Off'}</span>
+                  <button onClick={()=>toggleAvailability(p)}
+                    className={`relative w-11 h-6 rounded-full transition-colors ${p.is_active?'bg-green-500':'bg-gray-200'}`}>
+                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all duration-200 ${p.is_active?'left-6':'left-1'}`} />
+                  </button>
+                </div>
+                {/* Edit/Delete */}
+                <div className="flex gap-1.5 flex-shrink-0">
+                  <button onClick={()=>openEdit(p)} className="p-2 text-gray-400 hover:text-gray-700 border border-gray-200 rounded-lg hover:border-gray-400 transition-colors"><Pencil size={13}/></button>
+                  <button onClick={()=>deleteProduct(p.id)} disabled={deleting===p.id} className="p-2 text-gray-400 hover:text-red-500 border border-gray-200 rounded-lg hover:border-red-200 transition-colors">
+                    {deleting===p.id?<Loader2 size={13} className="animate-spin"/>:<Trash2 size={13}/>}
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <button onClick={() => openEdit(p)} className="p-2 text-gray-400 hover:text-gray-700 border border-gray-200 rounded-lg transition-colors"><Pencil size={14} /></button>
-                <button onClick={() => deleteProduct(p.id)} disabled={deleting === p.id}
-                  className="p-2 text-gray-400 hover:text-red-500 border border-gray-200 rounded-lg transition-colors">
-                  {deleting === p.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
