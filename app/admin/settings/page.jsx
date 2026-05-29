@@ -125,15 +125,11 @@ export default function AdminSettingsPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-10">
+    <div className="p-6 max-w-3xl">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <div className="flex items-center gap-3 mb-1">
-            <a href="/admin/dashboard" className="text-xs text-gray-400 hover:text-gray-700">← Dashboard</a>
-            <span className="text-xs text-gray-300">|</span>
-            <a href="/admin/products" className="text-xs text-gray-400 hover:text-gray-700">Products</a>
-          </div>
+
           <h1 className="text-2xl font-bold text-gray-900">Store Settings</h1>
         </div>
         <button onClick={saveAll} disabled={saving}
