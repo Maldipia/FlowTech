@@ -4,10 +4,9 @@ import { Loader2 } from 'lucide-react';
 import ProductCard from '@/components/ProductCard';
 
 const CATS = [
-  { id: 'all', label: 'All Products' },
-  { id: 'raw-food', label: 'Raw Food' },
-  { id: 'grooming', label: 'Grooming' },
-  { id: 'supplements', label: 'Supplements' },
+  { id: 'all',         label: 'All Products' },
+  { id: 'raw-food',    label: '🥩 Raw Food' },
+  { id: 'treats',      label: '🦴 Treats' },
 ];
 
 export default function ShopPage() {
@@ -25,10 +24,9 @@ export default function ShopPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-5 py-12">
-      {/* Header */}
       <div className="flex items-end justify-between mb-8 flex-wrap gap-4">
         <div>
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Our Products</p>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Supero Store</p>
           <h1 className="text-3xl font-bold text-gray-900">Shop</h1>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -42,7 +40,6 @@ export default function ShopPage() {
         </div>
       </div>
 
-      {/* Grid */}
       {loading ? (
         <div className="flex items-center justify-center py-24 gap-3 text-gray-400">
           <Loader2 size={20} className="animate-spin" /> Loading products…
