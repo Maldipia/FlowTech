@@ -1,44 +1,41 @@
 import Link from 'next/link';
-import { Zap } from 'lucide-react';
 
 export default function Footer() {
   return (
-    <footer className="border-t border-gray-100 bg-white">
-      <div className="max-w-4xl mx-auto px-6 py-10">
+    <footer className="bg-[#0A0A0A] border-t border-white/10">
+      <div className="max-w-6xl mx-auto px-5 py-12">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
-          <div>
-            <div className="flex items-center gap-2 font-medium text-gray-900 mb-3">
-              <div className="w-6 h-6 bg-blue-50 rounded-md flex items-center justify-center">
-                <Zap size={12} className="text-blue-600"/>
+          <div className="col-span-2 md:col-span-1">
+            <div className="flex items-center gap-2.5 mb-4">
+              <div className="w-7 h-7 bg-[#C9A84C] rounded-lg flex items-center justify-center">
+                <span className="text-black font-bold text-xs">S</span>
               </div>
-              flowtech.ph
+              <span className="text-white font-bold tracking-wider">SUPERO</span>
             </div>
-            <p className="text-xs text-gray-400 leading-relaxed">A TYG Services company.<br/>Amadeo, Cavite, PH.</p>
+            <p className="text-white/40 text-sm leading-relaxed">Premium raw pet food, grooming, and supplements. Fresh from Amadeo, Cavite.</p>
           </div>
           <div>
-            <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">Services</p>
-            {['Custom development','Automation','Systems integration','Retainer support'].map(s=>(
-              <Link key={s} href="/services" className="block text-sm text-gray-500 hover:text-gray-900 mb-1.5">{s}</Link>
+            <p className="text-white/30 text-xs font-semibold uppercase tracking-widest mb-4">Shop</p>
+            {[['Raw Food','/shop/raw-food'],['Grooming','/shop/grooming'],['Supplements','/shop/supplements'],['All Products','/shop']].map(([l,h])=>(
+              <Link key={l} href={h} className="block text-sm text-white/50 hover:text-white mb-2 transition-colors">{l}</Link>
             ))}
           </div>
           <div>
-            <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">Company</p>
-            {[['About','/about'],['Work','/work'],['Blog','/blog'],['Contact','/contact']].map(([l,h])=>(
-              <Link key={l} href={h} className="block text-sm text-gray-500 hover:text-gray-900 mb-1.5">{l}</Link>
+            <p className="text-white/30 text-xs font-semibold uppercase tracking-widest mb-4">Marketplace</p>
+            {[['Find a Puppy','/marketplace'],['Become a Breeder','/become-a-breeder']].map(([l,h])=>(
+              <Link key={l} href={h} className="block text-sm text-white/50 hover:text-white mb-2 transition-colors">{l}</Link>
             ))}
           </div>
           <div>
-            <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">Start here</p>
-            <Link href="/discovery" className="block text-sm text-blue-600 hover:underline mb-1.5">Discovery form</Link>
-            <Link href="/contact" className="block text-sm text-gray-500 hover:text-gray-900 mb-1.5">Contact us</Link>
+            <p className="text-white/30 text-xs font-semibold uppercase tracking-widest mb-4">Account</p>
+            {[['My Account','/account/dashboard'],['My Orders','/account/dashboard'],['Login','/account/login'],['Register','/account/register']].map(([l,h])=>(
+              <Link key={l} href={h} className="block text-sm text-white/50 hover:text-white mb-2 transition-colors">{l}</Link>
+            ))}
           </div>
         </div>
-        <div className="border-t border-gray-100 pt-6 flex justify-between items-center text-xs text-gray-400">
-          <span>© {new Date().getFullYear()} Flowtech.ph — TYG Services</span>
-          <div className="flex gap-4">
-            <Link href="/privacy" className="hover:text-gray-600">Privacy</Link>
-            <Link href="/terms" className="hover:text-gray-600">Terms</Link>
-          </div>
+        <div className="border-t border-white/10 pt-6 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-white/30">
+          <span>© {new Date().getFullYear()} SUPERO. All rights reserved.</span>
+          <span>Amadeo, Cavite, Philippines · Same-day delivery Metro Manila</span>
         </div>
       </div>
     </footer>
