@@ -86,7 +86,7 @@ export default function AdminProductsPage() {
 
   // ── Form view ──
   if (view === 'form') return (
-    <div className="max-w-3xl mx-auto px-6 py-10">
+    <div className="p-6 max-w-3xl">
       <div className="flex items-center gap-4 mb-8">
         <button onClick={() => setView('list')} className="p-2 border border-gray-200 rounded-xl text-gray-500 hover:border-gray-400 transition-colors"><ArrowLeft size={16} /></button>
         <h1 className="text-xl font-bold text-gray-900">{editProduct ? 'Edit Product' : 'New Product'}</h1>
@@ -191,14 +191,10 @@ export default function AdminProductsPage() {
 
   // ── List view ──
   return (
-    <div className="max-w-5xl mx-auto px-6 py-10">
+    <div className="p-6 max-w-6xl">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <div className="flex items-center gap-3 mb-1">
-            <a href="/admin/dashboard" className="text-xs text-gray-400 hover:text-gray-700">← Dashboard</a>
-            <span className="text-xs text-gray-300">|</span>
-            <a href="/admin/orders" className="text-xs text-gray-400 hover:text-gray-700">Orders</a>
-          </div>
+
           <h1 className="text-2xl font-bold text-gray-900">Products</h1>
         </div>
         <button onClick={openNew}
