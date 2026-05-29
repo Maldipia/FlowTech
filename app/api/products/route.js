@@ -1,6 +1,8 @@
 import { supabaseAdmin } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const category = searchParams.get('category');
@@ -10,7 +12,7 @@ export async function GET(request) {
     if (slug) {
       const { data: product, error } = await supabaseAdmin
         .from('products')
-        .select(`*, product_variants(*), product_images(*)`)
+        .select('*, product_variants(*), product_images(*)')
         .eq('slug', slug)
         .eq('is_active', true)
         .single();
@@ -20,11 +22,13 @@ export async function GET(request) {
 
     let query = supabaseAdmin
       .from('products')
-      .select(`*, product_variants(*), product_images(*)`)
+      .select('*, product_variants(*), product_images(*)')
       .eq('is_active', true)
       .order('sort_order', { ascending: true });
 
-    if (category && category !== 'all') query = query.eq('category', category);
+    if (category && category !== 'all') {
+      query = query.eq('category', category);
+    }
 
     const { data, error } = await query;
     if (error) throw error;
