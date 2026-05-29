@@ -22,8 +22,9 @@ export default function Navbar() {
   const links = [
     { href: '/shop', label: 'Shop' },
     { href: '/shop/raw-food', label: 'Raw Food' },
-    { href: '/shop/grooming', label: 'Grooming' },
-    { href: '/shop/supplements', label: 'Supplements' },
+    { href: '/shop/treats', label: 'Treats' },
+    { href: '/shop/accessories', label: 'Accessories' },
+    { href: '/shop/hygiene', label: 'Hygiene' },
     { href: '/marketplace', label: 'Find a Puppy' },
   ];
 
