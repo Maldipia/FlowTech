@@ -14,7 +14,7 @@ export async function POST(request) {
   try {
     const formData = await request.formData();
     const file = formData.get('file');
-    const settingKey = formData.get('key'); // 'logo_url', 'gcash_qr_url', 'maya_qr_url'
+    const settingKey = formData.get('key');
 
     if (!file || !settingKey) {
       return NextResponse.json({ error: 'File and key required' }, { status: 400 });
@@ -26,31 +26,25 @@ export async function POST(request) {
     const fileName = `${settingKey}-${Date.now()}.${ext}`;
     const bucket = 'supero-assets';
 
-    // Upload to Supabase Storage
     const { data: upload, error: uploadError } = await supabaseAdmin
-      .storage
-      .from(bucket)
-      .upload(fileName, bytes, {
-        contentType: file.type,
-        upsert: true,
-      });
+      .storage.from(bucket)
+      .upload(fileName, bytes, { contentType: file.type, upsert: true });
 
     if (uploadError) {
       console.error('Upload error:', uploadError);
       return NextResponse.json({ error: uploadError.message }, { status: 500 });
     }
 
-    // Get public URL
     const { data: { publicUrl } } = supabaseAdmin
-      .storage
-      .from(bucket)
-      .getPublicUrl(fileName);
+      .storage.from(bucket).getPublicUrl(fileName);
 
-    // Save URL to settings
-    await supabaseAdmin
-      .from('settings')
-      .update({ value: publicUrl, updated_at: new Date().toISOString() })
-      .eq('key', settingKey);
+    // Save to settings if it's a settings key
+    if (settingKey && !settingKey.startsWith('product_img')) {
+      await supabaseAdmin
+        .from('settings')
+        .update({ value: publicUrl, updated_at: new Date().toISOString() })
+        .eq('key', settingKey);
+    }
 
     return NextResponse.json({ success: true, url: publicUrl });
   } catch (err) {
