@@ -9,6 +9,7 @@ const CATS = [
   { id: 'grooming',     label: 'Grooming',      emoji: '🧴' },
   { id: 'supplements',  label: 'Supplements',   emoji: '💊' },
   { id: 'accessories',  label: 'Accessories',   emoji: '🎀' },
+  { id: 'hygiene',      label: 'Hygiene',       emoji: '🧼' },
   { id: 'apparel',      label: 'Apparel',       emoji: '👕' },
   { id: 'others',       label: 'Others',        emoji: '📦' },
 ];
@@ -441,3 +442,4 @@ export default function AdminProductsPage() {
     </div>
   );
 }
+
