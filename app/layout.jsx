@@ -1,63 +1,35 @@
-import { Inter } from 'next/font/google';
+import { DM_Sans } from 'next/font/google';
 import './globals.css';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import CartProvider from '@/components/CartProvider';
 
-const inter = Inter({ subsets: ['latin'] });
+const dmSans = DM_Sans({ subsets: ['latin'] });
 
 export const metadataBase = new URL('https://www.flowtech.ph');
 
 export const metadata = {
-  title: {
-    default: 'Flowtech.ph — Web Development & Automation Studio',
-    template: '%s — Flowtech.ph',
-  },
-  description: 'Custom websites, platforms, and business automation for Philippine businesses. Built by operators, for operators. Based in Amadeo, Cavite.',
-  keywords: [
-    'web development Philippines',
-    'automation Philippines',
-    'n8n Philippines',
-    'Next.js developer Cavite',
-    'business system Philippines',
-    'Google Apps Script Philippines',
-    'Supabase developer Philippines',
-    'TYG Services',
-  ],
-  authors: [{ name: 'Flowtech.ph', url: 'https://www.flowtech.ph' }],
-  creator: 'Flowtech.ph',
-  publisher: 'TYG Services',
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: { index: true, follow: true },
-  },
+  title: { default: 'SUPERO — Premium Pet Food & Marketplace', template: '%s — SUPERO' },
+  description: 'Premium raw pet food, grooming, supplements, and puppy marketplace. Delivered fresh across the Philippines.',
+  keywords: ['raw dog food Philippines', 'BARF dog food', 'pet food delivery Cavite', 'puppy for sale Philippines', 'premium pet food'],
   openGraph: {
-    type: 'website',
-    locale: 'en_PH',
+    type: 'website', locale: 'en_PH',
     url: 'https://www.flowtech.ph',
-    siteName: 'Flowtech.ph',
-    title: 'Flowtech.ph — Build. Automate. Scale.',
-    description: 'Custom dev and automation for Philippine businesses. Built by operators, for operators.',
-    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'Flowtech.ph' }],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Flowtech.ph — Build. Automate. Scale.',
-    description: 'Custom dev and automation for Philippine businesses.',
-    images: ['/og-image.png'],
-  },
-  alternates: {
-    canonical: 'https://www.flowtech.ph',
+    siteName: 'SUPERO',
+    title: 'SUPERO — Premium Pet Food & Marketplace',
+    description: 'Raw pet food, grooming, supplements, and puppy marketplace. Fresh. Delivered.',
   },
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
-        <Navbar />
-        <main>{children}</main>
-        <Footer />
+      <body className={dmSans.className}>
+        <CartProvider>
+          <Navbar />
+          <main className="min-h-screen">{children}</main>
+          <Footer />
+        </CartProvider>
       </body>
     </html>
   );
