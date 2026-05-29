@@ -12,6 +12,7 @@ const TABS = [
   { id: 'video',   label: 'Hero Video',      icon: Video },
   { id: 'payment', label: 'Mode of Payment', icon: CreditCard },
   { id: 'shipping',label: 'Shipping',        icon: Truck },
+  { id: 'analytics',label: 'Analytics',      icon: Globe },
 ];
 
 export default function AdminSettingsPage() {
@@ -343,6 +344,22 @@ export default function AdminSettingsPage() {
       </div>
     ),
   };
+
+  // analytics tab inline
+  TAB_CONTENT.analytics = (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-base font-bold text-gray-900 mb-1">Facebook Pixel</h3>
+        <p className="text-sm text-gray-400 mb-4">Get your Pixel ID from Meta Business Manager. Tracks purchases and add-to-cart events.</p>
+        <Field k="fb_pixel_id" placeholder="e.g. 1234567890123456" />
+      </div>
+      <div className="border-t border-gray-100 pt-6">
+        <h3 className="text-base font-bold text-gray-900 mb-1">Google Analytics 4</h3>
+        <p className="text-sm text-gray-400 mb-4">Get your Measurement ID from Google Analytics dashboard.</p>
+        <Field k="ga4_id" placeholder="e.g. G-XXXXXXXXXX" />
+      </div>
+    </div>
+  );
 
   if (loading) return (
     <div className="flex items-center justify-center h-64 gap-3 text-gray-400">
