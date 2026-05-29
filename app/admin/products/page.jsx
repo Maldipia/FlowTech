@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Plus, Pencil, Trash2, Package, ArrowLeft, Save, X, Upload, ImageIcon, Search } from 'lucide-react';
+import { Loader2, Plus, Pencil, Trash2, Package, ArrowLeft, Save, X, Upload, ImageIcon, Search, Download, CheckSquare, Square } from 'lucide-react';
 
 const CATS = [
   { id: 'raw-food',     label: 'Raw Food',     emoji: '🥩' },
@@ -42,6 +42,7 @@ export default function AdminProductsPage() {
   const [deleting, setDeleting] = useState(null);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState(new Set());
   const [filterCat, setFilterCat] = useState('all');
   const fileRef = useRef();
 
@@ -310,6 +311,18 @@ export default function AdminProductsPage() {
           )}
         </div>
         {/* New product */}
+        {selected.size > 0 && (
+          <div className="flex items-center gap-2 bg-[#0A0A0A] text-white px-4 py-2.5 rounded-xl text-sm font-semibold">
+            <span>{selected.size} selected</span>
+            <button onClick={async () => { for (const id of selected) { await fetch('/api/admin/products', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id, is_active: true }) }); } await fetchProducts(); setSelected(new Set()); }} className="underline hover:no-underline">Enable all</button>
+            <span>/</span>
+            <button onClick={async () => { for (const id of selected) { await fetch('/api/admin/products', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id, is_active: false }) }); } await fetchProducts(); setSelected(new Set()); }} className="underline hover:no-underline">Disable all</button>
+            <button onClick={() => setSelected(new Set())} className="ml-1 opacity-60 hover:opacity-100">x</button>
+          </div>
+        )}
+        <button onClick={() => window.open('/api/admin/export?type=products','_blank')} className="flex items-center gap-2 border border-gray-200 text-gray-600 text-sm font-semibold px-4 py-2.5 rounded-xl hover:border-gray-400 transition-colors flex-shrink-0">
+          <Download size={14} /> Export CSV
+        </button>
         <button onClick={() => openNew(filterCat === 'all' ? 'raw-food' : filterCat)}
           className="flex items-center gap-2 bg-[#0A0A0A] text-white text-sm font-bold px-5 py-2.5 rounded-xl hover:bg-gray-800 transition-colors flex-shrink-0">
           <Plus size={15} /> New Product
