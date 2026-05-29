@@ -1,3 +1,4 @@
+import SearchBar from './SearchBar';
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -61,6 +62,7 @@ export default function Navbar() {
 
           {/* Right actions */}
           <div className="flex items-center gap-2">
+            <SearchBar className="hidden md:block" />
             <Link href="/account/dashboard"
               className="hidden md:flex items-center gap-1.5 text-white/60 hover:text-white text-sm transition-colors px-3 py-2 rounded-lg hover:bg-white/5">
               <User size={16} />
@@ -94,7 +96,8 @@ export default function Navbar() {
                   {l.label}
                 </Link>
               ))}
-              <Link href="/account/dashboard" onClick={() => setOpen(false)}
+              <SearchBar className="hidden md:block" />
+            <Link href="/account/dashboard" onClick={() => setOpen(false)}
                 className="flex items-center px-3 py-2.5 rounded-xl text-sm font-medium text-white/60 hover:text-white hover:bg-white/5 transition-colors">
                 My Account
               </Link>
