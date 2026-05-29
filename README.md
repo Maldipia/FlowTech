@@ -1,2 +1,3 @@
 # SUPERO Dog Farm
-Deploy: Fri May 29 02:33:52 UTC 2026
+Phase 2 build: Search+Promo+Reviews+Bulk+SEO+FB Pixel+GA4+Loyalty
+Deploy: Fri May 29 03:49:18 UTC 2026
