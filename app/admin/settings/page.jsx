@@ -1,17 +1,32 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Save, Upload, Image, Video, CheckCircle, Globe, CreditCard, Package, Truck } from 'lucide-react';
+import {
+  Loader2, Save, Upload, CheckCircle,
+  ImageIcon, Video, Globe, CreditCard, Truck, Store
+} from 'lucide-react';
+
+const TABS = [
+  { id: 'logo',    label: 'Logo & Brand',    icon: Store },
+  { id: 'landing', label: 'Landing Page',    icon: Globe },
+  { id: 'video',   label: 'Hero Video',      icon: Video },
+  { id: 'payment', label: 'Mode of Payment', icon: CreditCard },
+  { id: 'shipping',label: 'Shipping',        icon: Truck },
+];
 
 export default function AdminSettingsPage() {
   const router = useRouter();
+  const [tab, setTab] = useState('logo');
   const [settings, setSettings] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [uploading, setUploading] = useState({});
   const fileRefs = {
-    logo_url: useRef(), gcash_qr_url: useRef(), maya_qr_url: useRef(), hero_video_url: useRef()
+    logo_url: useRef(),
+    gcash_qr_url: useRef(),
+    maya_qr_url: useRef(),
+    hero_video_url: useRef(),
   };
 
   useEffect(() => {
@@ -44,204 +59,351 @@ export default function AdminSettingsPage() {
     fd.append('file', file); fd.append('key', key);
     const res = await fetch('/api/admin/upload', { method: 'POST', body: fd });
     const data = await res.json();
-    if (data.success) setSettings(s => ({ ...s, [key]: { ...s[key], value: data.url } }));
+    if (data.success) set(key, data.url);
     setUploading(u => ({ ...u, [key]: false }));
   };
 
-  if (loading) return (
-    <div className="flex items-center justify-center py-20 text-gray-400 gap-3">
-      <Loader2 size={18} className="animate-spin" />
-    </div>
-  );
-
-  const TextInput = ({ k, placeholder = '' }) => (
+  // ── Reusable field components ──
+  const Field = ({ k, placeholder = '', type = 'text', rows }) => (
     <div>
-      <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">{settings[k]?.label}</label>
-      <input value={settings[k]?.value || ''} onChange={e => set(k, e.target.value)} placeholder={placeholder}
-        className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-gray-400 transition-colors" />
-    </div>
-  );
-
-  const ImageUpload = ({ k, label }) => (
-    <div>
-      <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{label || settings[k]?.label}</label>
-      <div className="border-2 border-dashed border-gray-200 rounded-2xl p-4 hover:border-gray-300 transition-colors">
-        {settings[k]?.value ? (
-          <div className="flex items-start gap-4">
-            <img src={settings[k].value} alt={label} className="w-20 h-20 object-contain rounded-xl border border-gray-100 bg-gray-50 flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs text-green-600 font-medium mb-1">✓ Uploaded</p>
-              <p className="text-[10px] text-gray-400 break-all mb-2 leading-relaxed">{settings[k].value}</p>
-              <button onClick={() => fileRefs[k]?.current?.click()} className="text-xs text-blue-600 hover:underline">Replace</button>
-            </div>
-          </div>
-        ) : (
-          <div className="text-center py-3">
-            <Image size={24} className="text-gray-300 mx-auto mb-2" />
-            <button onClick={() => fileRefs[k]?.current?.click()}
-              className="bg-[#0A0A0A] text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors flex items-center gap-2 mx-auto">
-              {uploading[k] ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
-              {uploading[k] ? 'Uploading…' : 'Upload image'}
-            </button>
-          </div>
-        )}
-      </div>
-      {settings[k]?.value && (
-        <button onClick={() => fileRefs[k]?.current?.click()} disabled={uploading[k]}
-          className="mt-1.5 w-full border border-gray-200 text-gray-500 text-xs py-2 rounded-xl hover:border-gray-400 transition-colors flex items-center justify-center gap-1.5">
-          {uploading[k] ? <><Loader2 size={11} className="animate-spin" />Uploading…</> : <><Upload size={11} />Replace image</>}
-        </button>
+      <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5">
+        {settings[k]?.label || k}
+      </label>
+      {rows ? (
+        <textarea value={settings[k]?.value || ''} onChange={e => set(k, e.target.value)}
+          placeholder={placeholder} rows={rows}
+          className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:border-gray-400 resize-none transition-colors" />
+      ) : (
+        <input type={type} value={settings[k]?.value || ''} onChange={e => set(k, e.target.value)}
+          placeholder={placeholder}
+          className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:border-gray-400 transition-colors" />
       )}
-      <input ref={fileRefs[k]} type="file" accept="image/*" className="hidden" onChange={e => uploadFile(k, e.target.files?.[0])} />
-    </div>
-  );
-
-  const VideoUpload = ({ k }) => (
-    <div>
-      <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Hero Video (short clip, MP4 recommended)</label>
-      <div className="border-2 border-dashed border-gray-200 rounded-2xl p-5 hover:border-gray-300 transition-colors">
-        {settings[k]?.value ? (
-          <div>
-            <video src={settings[k].value} className="w-full max-h-40 rounded-xl mb-3 bg-black" controls muted />
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-green-600 font-medium">✓ Video uploaded</p>
-              <button onClick={() => fileRefs[k]?.current?.click()} className="text-xs text-blue-600 hover:underline">Replace</button>
-            </div>
-            <p className="text-[10px] text-gray-400 mt-1 break-all">{settings[k].value}</p>
-          </div>
-        ) : (
-          <div className="text-center py-4">
-            <Video size={28} className="text-gray-300 mx-auto mb-3" />
-            <p className="text-sm text-gray-500 mb-1">Upload a short video clip</p>
-            <p className="text-xs text-gray-400 mb-4">MP4, MOV, WEBM · Max 50MB · Recommended: 10–30 seconds</p>
-            <button onClick={() => fileRefs[k]?.current?.click()}
-              className="bg-[#0A0A0A] text-white text-xs font-bold px-5 py-2.5 rounded-lg hover:bg-gray-800 transition-colors flex items-center gap-2 mx-auto">
-              {uploading[k] ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
-              {uploading[k] ? 'Uploading…' : 'Upload video'}
-            </button>
-          </div>
-        )}
-      </div>
-      <input ref={fileRefs[k]} type="file" accept="video/mp4,video/mov,video/webm,video/*" className="hidden"
-        onChange={e => uploadFile(k, e.target.files?.[0])} />
     </div>
   );
 
   const Toggle = ({ k }) => {
     const on = settings[k]?.value === 'true';
     return (
-      <div className="flex items-center justify-between py-2">
-        <span className="text-sm text-gray-700">{settings[k]?.label}</span>
+      <div className="flex items-center justify-between py-3 border-b border-gray-50 last:border-0">
+        <div>
+          <p className="text-sm font-semibold text-gray-800">{settings[k]?.label}</p>
+          <p className="text-xs text-gray-400">{on ? 'Enabled — shown at checkout' : 'Disabled — hidden from checkout'}</p>
+        </div>
         <button onClick={() => set(k, on ? 'false' : 'true')}
-          className={`w-11 h-6 rounded-full transition-colors flex items-center px-1 ${on ? 'bg-[#0A0A0A]' : 'bg-gray-200'}`}>
-          <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${on ? 'translate-x-5' : ''}`} />
+          className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ml-4 ${on ? 'bg-green-500' : 'bg-gray-200'}`}>
+          <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all duration-200 ${on ? 'left-7' : 'left-1'}`} />
         </button>
       </div>
     );
   };
 
-  const Section = ({ icon: Icon, title, children }) => (
-    <div className="bg-white border border-gray-100 rounded-2xl p-6">
-      <h2 className="font-bold text-gray-900 mb-5 flex items-center gap-2.5 text-sm">
-        <div className="w-7 h-7 bg-[#0A0A0A] rounded-lg flex items-center justify-center flex-shrink-0">
-          <Icon size={13} className="text-[#C9A84C]" />
-        </div>
-        {title}
-      </h2>
-      <div className="space-y-4">{children}</div>
+  const ImageUploadBox = ({ k, label, hint }) => (
+    <div>
+      <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">{label}</label>
+      {hint && <p className="text-xs text-gray-400 mb-3">{hint}</p>}
+      <div className={`border-2 border-dashed rounded-2xl p-5 transition-colors cursor-pointer
+        ${settings[k]?.value ? 'border-gray-200 hover:border-gray-300' : 'border-gray-200 hover:border-[#C9A84C]/40 hover:bg-[#FBF7EE]/30'}`}
+        onClick={() => !settings[k]?.value && fileRefs[k]?.current?.click()}>
+        {settings[k]?.value ? (
+          <div className="flex items-start gap-4">
+            <img src={settings[k].value} alt={label}
+              className="w-24 h-24 object-contain rounded-xl border border-gray-100 bg-gray-50 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded-lg">✓ Uploaded</span>
+              </div>
+              <p className="text-[10px] text-gray-400 break-all leading-relaxed mb-3">{settings[k].value}</p>
+              <button onClick={e => { e.stopPropagation(); fileRefs[k]?.current?.click(); }}
+                disabled={uploading[k]}
+                className="flex items-center gap-1.5 bg-[#0A0A0A] hover:bg-gray-800 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors">
+                {uploading[k] ? <Loader2 size={11} className="animate-spin" /> : <Upload size={11} />}
+                {uploading[k] ? 'Uploading…' : 'Replace'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-6">
+            <ImageIcon size={28} className="text-gray-300 mx-auto mb-3" />
+            <p className="text-sm font-medium text-gray-500 mb-1">{label}</p>
+            <p className="text-xs text-gray-400 mb-4">JPG, PNG, SVG · Max 5MB</p>
+            <button onClick={e => { e.stopPropagation(); fileRefs[k]?.current?.click(); }}
+              disabled={uploading[k]}
+              className="flex items-center gap-2 bg-[#0A0A0A] hover:bg-gray-800 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-colors mx-auto">
+              {uploading[k] ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+              {uploading[k] ? 'Uploading…' : 'Upload image'}
+            </button>
+          </div>
+        )}
+      </div>
+      <input ref={fileRefs[k]} type="file" accept="image/*" className="hidden"
+        onChange={e => uploadFile(k, e.target.files?.[0])} />
     </div>
   );
 
-  return (
-    <div className="p-6 max-w-3xl">
-      <div className="flex items-center justify-between mb-6">
-        <p className="text-gray-400 text-sm">Changes are saved instantly to DB and reflected on the website.</p>
-        <button onClick={saveAll} disabled={saving}
-          className="flex items-center gap-2 bg-[#0A0A0A] text-white text-sm font-bold px-5 py-2.5 rounded-xl hover:bg-gray-800 transition-colors disabled:opacity-50">
-          {saving ? <Loader2 size={14} className="animate-spin" /> : saved ? <CheckCircle size={14} /> : <Save size={14} />}
-          {saved ? 'Saved!' : saving ? 'Saving…' : 'Save All'}
-        </button>
+  const VideoUploadBox = ({ k }) => (
+    <div>
+      <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">
+        Hero Video
+      </label>
+      <p className="text-xs text-gray-400 mb-3">
+        Plays as a muted autoplay background behind your hero text. Keep it 10–30 seconds.
+      </p>
+      <div className={`border-2 border-dashed rounded-2xl p-5 transition-colors
+        ${settings[k]?.value ? 'border-gray-200' : 'border-gray-200 hover:border-[#C9A84C]/40'}`}>
+        {settings[k]?.value ? (
+          <div>
+            <video src={settings[k].value} className="w-full max-h-48 rounded-xl mb-4 bg-black" controls muted />
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded-lg">✓ Video uploaded</span>
+              <button onClick={() => fileRefs[k]?.current?.click()} disabled={uploading[k]}
+                className="flex items-center gap-1.5 bg-[#0A0A0A] text-white text-xs font-bold px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors">
+                {uploading[k] ? <Loader2 size={11} className="animate-spin" /> : <Upload size={11} />}
+                {uploading[k] ? 'Uploading…' : 'Replace video'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <Video size={32} className="text-gray-300 mx-auto mb-3" />
+            <p className="text-sm font-medium text-gray-500 mb-1">Upload a short video clip</p>
+            <p className="text-xs text-gray-400 mb-5">MP4, MOV, WEBM · Max 50MB · Recommended: 10–30 seconds</p>
+            <button onClick={() => fileRefs[k]?.current?.click()} disabled={uploading[k]}
+              className="flex items-center gap-2 bg-[#0A0A0A] hover:bg-gray-800 text-white text-xs font-bold px-5 py-3 rounded-xl transition-colors mx-auto">
+              {uploading[k] ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+              {uploading[k] ? 'Uploading…' : 'Upload video'}
+            </button>
+          </div>
+        )}
       </div>
+      <input ref={fileRefs[k]} type="file" accept="video/*" className="hidden"
+        onChange={e => uploadFile(k, e.target.files?.[0])} />
+    </div>
+  );
 
-      <div className="space-y-5">
-        {/* HOMEPAGE CONTENT */}
-        <Section icon={Globe} title="Homepage Content">
-          <TextInput k="announcement" placeholder="e.g. Free shipping on orders ₱1,500+" />
-          <TextInput k="hero_greeting" placeholder="Isang Magandang Araw Mga Boss Amo" />
-          <TextInput k="hero_title" placeholder="The Ancient Modern Natural Diet" />
-          <TextInput k="hero_subtitle" placeholder="An ancient modern natural diet..." />
-          <TextInput k="hero_cta_primary" placeholder="SHOP NOW" />
-          <div className="grid grid-cols-3 gap-3">
-            <TextInput k="stat_1_value" placeholder="2.3M" />
-            <TextInput k="stat_2_value" placeholder="100%" />
-            <TextInput k="stat_3_value" placeholder="0" />
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <TextInput k="stat_1_label" placeholder="Facebook Followers" />
-            <TextInput k="stat_2_label" placeholder="All Natural" />
-            <TextInput k="stat_3_label" placeholder="Preservatives" />
-          </div>
-          <TextInput k="open_hours" placeholder="Open Daily 9AM–11PM" />
-          <TextInput k="fb_page_url" placeholder="https://www.facebook.com/superodogfarm" />
-          <TextInput k="footer_text" placeholder="Manufactured by Supero Dog Farm..." />
-        </Section>
-
-        {/* BRANDING */}
-        <Section icon={Package} title="Brand & Logo">
+  // ── Tab content ──
+  const TAB_CONTENT = {
+    logo: (
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-base font-bold text-gray-900 mb-1">Store Logo</h3>
+          <p className="text-sm text-gray-400 mb-5">Shown in the top navbar across all pages.</p>
+          <ImageUploadBox k="logo_url" label="Logo Image" hint="PNG with transparent background recommended. Height ~40px." />
+        </div>
+        <div className="border-t border-gray-100 pt-6">
+          <h3 className="text-base font-bold text-gray-900 mb-4">Store Identity</h3>
           <div className="grid sm:grid-cols-2 gap-4">
-            <TextInput k="store_name" placeholder="Supero Dog Farm" />
-            <TextInput k="store_tagline" placeholder="Istorya ng Supero" />
-            <TextInput k="store_email" placeholder="community@superodogfarm.com" />
-            <TextInput k="store_mobile" placeholder="09XX XXX XXXX" />
+            <Field k="store_name" placeholder="Supero Dog Farm" />
+            <Field k="store_tagline" placeholder="Istorya ng Supero" />
+            <Field k="store_email" placeholder="community@superodogfarm.com" />
+            <Field k="store_mobile" placeholder="09XX XXX XXXX" />
           </div>
-          <TextInput k="store_address" placeholder="Purok 4, Brgy Bucal, Amadeo, Cavite 4119" />
-          <ImageUpload k="logo_url" label="Store Logo (shown in navbar)" />
-        </Section>
+          <div className="mt-4">
+            <Field k="store_address" placeholder="Purok 4, Brgy Bucal, Amadeo, Cavite 4119" />
+          </div>
+        </div>
+      </div>
+    ),
 
-        {/* HERO VIDEO */}
-        <Section icon={Video} title="Homepage Hero Video">
-          <p className="text-xs text-gray-400 -mt-2">Upload a short 10–30 second video clip. It will play in the hero section of the homepage (muted, autoplay loop).</p>
-          <VideoUpload k="hero_video_url" />
-        </Section>
+    landing: (
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-base font-bold text-gray-900 mb-1">Announcement Bar</h3>
+          <p className="text-sm text-gray-400 mb-4">Gold banner at the very top. Leave empty to hide.</p>
+          <Field k="announcement" placeholder="Free shipping on orders ₱1,500+ · Same-day delivery Metro Manila" />
+        </div>
+        <div className="border-t border-gray-100 pt-6">
+          <h3 className="text-base font-bold text-gray-900 mb-4">Hero Section</h3>
+          <div className="space-y-4">
+            <Field k="hero_greeting" placeholder="Isang Magandang Araw Mga Boss Amo" />
+            <Field k="hero_title" placeholder="The Ancient Modern Natural Diet" />
+            <Field k="hero_subtitle" placeholder="An ancient modern natural diet that will delight your furbabies." />
+            <Field k="hero_cta_primary" placeholder="SHOP NOW" />
+          </div>
+        </div>
+        <div className="border-t border-gray-100 pt-6">
+          <h3 className="text-base font-bold text-gray-900 mb-4">Hero Stats (3 numbers under the CTA)</h3>
+          <div className="grid grid-cols-3 gap-3 mb-3">
+            <Field k="stat_1_value" placeholder="2.3M" />
+            <Field k="stat_2_value" placeholder="100%" />
+            <Field k="stat_3_value" placeholder="0" />
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <Field k="stat_1_label" placeholder="Facebook Followers" />
+            <Field k="stat_2_label" placeholder="All Natural" />
+            <Field k="stat_3_label" placeholder="Preservatives" />
+          </div>
+        </div>
+        <div className="border-t border-gray-100 pt-6">
+          <h3 className="text-base font-bold text-gray-900 mb-4">Footer & Social</h3>
+          <div className="space-y-4">
+            <Field k="open_hours" placeholder="Open Daily 9AM–11PM" />
+            <Field k="fb_page_url" placeholder="https://www.facebook.com/superodogfarm" />
+            <Field k="footer_text" placeholder="Manufactured by Supero Dog Farm · Amadeo, Cavite 4119" />
+          </div>
+        </div>
+      </div>
+    ),
 
-        {/* PAYMENT */}
-        <Section icon={CreditCard} title="Payment Methods">
-          <div className="border border-gray-100 rounded-xl p-4 space-y-0.5">
+    video: (
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-base font-bold text-gray-900 mb-1">Hero Background Video</h3>
+          <p className="text-sm text-gray-400 mb-6">
+            When uploaded, this video plays as a dark muted background behind your hero text on the homepage. If no video is uploaded, a gradient background is shown instead.
+          </p>
+          <VideoUploadBox k="hero_video_url" />
+        </div>
+        {settings['hero_video_url']?.value && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-700">
+            <strong>Note:</strong> Video plays on loop, muted and autoplay. Keep it short (10–30 sec) and visually engaging — dogs, farm footage, food prep. Dark/moody tones work best.
+          </div>
+        )}
+      </div>
+    ),
+
+    payment: (
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-base font-bold text-gray-900 mb-1">Payment Methods</h3>
+          <p className="text-sm text-gray-400 mb-5">Enable or disable each payment method shown at checkout.</p>
+          <div className="bg-gray-50 rounded-2xl px-5 py-2 divide-y divide-gray-100">
             <Toggle k="cod_enabled" />
             <Toggle k="gcash_enabled" />
             <Toggle k="maya_enabled" />
             <Toggle k="bank_enabled" />
           </div>
-          <div className="grid sm:grid-cols-2 gap-4">
-            <TextInput k="gcash_name" placeholder="GCash account name" />
-            <TextInput k="gcash_number" placeholder="09XX XXX XXXX" />
-          </div>
-          <ImageUpload k="gcash_qr_url" label="GCash QR Code" />
-          <div className="grid sm:grid-cols-2 gap-4">
-            <TextInput k="maya_name" placeholder="Maya account name" />
-            <TextInput k="maya_number" placeholder="09XX XXX XXXX" />
-          </div>
-          <ImageUpload k="maya_qr_url" label="Maya QR Code" />
-          <div className="grid sm:grid-cols-3 gap-3">
-            <TextInput k="bank_name" placeholder="BDO / BPI" />
-            <TextInput k="bank_account_name" placeholder="Account name" />
-            <TextInput k="bank_account" placeholder="Account number" />
-          </div>
-        </Section>
+        </div>
 
-        {/* SHIPPING */}
-        <Section icon={Truck} title="Shipping">
-          <TextInput k="free_shipping_min" placeholder="0 = disabled · 1500 = free over ₱1,500" />
-        </Section>
+        {/* GCash */}
+        <div className="border border-gray-100 rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+              <span className="text-white text-xs font-black">G</span>
+            </div>
+            <h3 className="font-bold text-gray-900">GCash</h3>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ml-auto ${settings['gcash_enabled']?.value === 'true' ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+              {settings['gcash_enabled']?.value === 'true' ? 'Enabled' : 'Disabled'}
+            </span>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-4 mb-4">
+            <Field k="gcash_name" placeholder="Account name" />
+            <Field k="gcash_number" placeholder="09XX XXX XXXX" />
+          </div>
+          <ImageUploadBox k="gcash_qr_url" label="GCash QR Code" hint="Customers will scan this QR to pay. PNG preferred." />
+        </div>
+
+        {/* Maya */}
+        <div className="border border-gray-100 rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
+              <span className="text-white text-xs font-black">M</span>
+            </div>
+            <h3 className="font-bold text-gray-900">Maya</h3>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ml-auto ${settings['maya_enabled']?.value === 'true' ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+              {settings['maya_enabled']?.value === 'true' ? 'Enabled' : 'Disabled'}
+            </span>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-4 mb-4">
+            <Field k="maya_name" placeholder="Account name" />
+            <Field k="maya_number" placeholder="09XX XXX XXXX" />
+          </div>
+          <ImageUploadBox k="maya_qr_url" label="Maya QR Code" hint="Customers will scan this QR to pay." />
+        </div>
+
+        {/* Bank */}
+        <div className="border border-gray-100 rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 bg-gray-800 rounded-lg flex items-center justify-center">
+              <span className="text-white text-xs font-black">B</span>
+            </div>
+            <h3 className="font-bold text-gray-900">Bank Transfer</h3>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ml-auto ${settings['bank_enabled']?.value === 'true' ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+              {settings['bank_enabled']?.value === 'true' ? 'Enabled' : 'Disabled'}
+            </span>
+          </div>
+          <div className="grid sm:grid-cols-3 gap-4">
+            <Field k="bank_name" placeholder="BDO / BPI / UnionBank" />
+            <Field k="bank_account_name" placeholder="Account name" />
+            <Field k="bank_account" placeholder="Account number" />
+          </div>
+        </div>
       </div>
+    ),
 
-      {/* Sticky save */}
-      <div className="sticky bottom-4 mt-6">
-        <button onClick={saveAll} disabled={saving}
-          className="w-full bg-[#0A0A0A] text-white py-4 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors disabled:opacity-50 shadow-xl">
-          {saving ? <Loader2 size={15} className="animate-spin" /> : saved ? <CheckCircle size={15} /> : <Save size={15} />}
-          {saved ? '✓ All changes saved!' : saving ? 'Saving…' : 'Save All Settings'}
-        </button>
+    shipping: (
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-base font-bold text-gray-900 mb-1">Free Shipping</h3>
+          <p className="text-sm text-gray-400 mb-5">Set a minimum order amount for free shipping. Set to 0 to disable.</p>
+          <Field k="free_shipping_min" placeholder="0 = disabled · e.g. 1500 = free shipping over ₱1,500" />
+        </div>
+        <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-700">
+          <strong>Courier rates</strong> are configured in the database (shipping_rates table). Currently seeded: Lalamove ₱80, J&T from ₱80, LBC from ₱90. Contact your developer to update these rates.
+        </div>
+      </div>
+    ),
+  };
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-64 gap-3 text-gray-400">
+      <Loader2 size={20} className="animate-spin" />
+    </div>
+  );
+
+  const ActiveTab = TABS.find(t => t.id === tab);
+
+  return (
+    <div className="flex h-full min-h-[calc(100vh-56px)]">
+      {/* Left tab navigation */}
+      <aside className="w-52 flex-shrink-0 bg-gray-50 border-r border-gray-100 p-3">
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 mb-3">Sections</p>
+        <nav className="space-y-0.5">
+          {TABS.map(t => (
+            <button key={t.id} onClick={() => setTab(t.id)}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-left transition-all
+                ${tab === t.id
+                  ? 'bg-[#0A0A0A] text-white'
+                  : 'text-gray-600 hover:bg-gray-200 hover:text-gray-900'}`}>
+              <t.icon size={15} className={tab === t.id ? 'text-[#C9A84C]' : 'text-gray-400'} />
+              {t.label}
+            </button>
+          ))}
+        </nav>
+      </aside>
+
+      {/* Main content */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-2xl p-8">
+          {/* Section header */}
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-[#0A0A0A] rounded-xl flex items-center justify-center flex-shrink-0">
+                {ActiveTab && <ActiveTab.icon size={16} className="text-[#C9A84C]" />}
+              </div>
+              <div>
+                <h2 className="font-bold text-gray-900 text-lg">{ActiveTab?.label}</h2>
+                <p className="text-xs text-gray-400">Saved to DB · reflects on website immediately</p>
+              </div>
+            </div>
+            <button onClick={saveAll} disabled={saving}
+              className="flex items-center gap-2 bg-[#0A0A0A] hover:bg-gray-800 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors disabled:opacity-50">
+              {saving ? <Loader2 size={14} className="animate-spin" /> : saved ? <CheckCircle size={14} /> : <Save size={14} />}
+              {saved ? 'Saved!' : saving ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+
+          {/* Tab content */}
+          {TAB_CONTENT[tab]}
+
+          {/* Bottom save */}
+          <div className="mt-10 pt-6 border-t border-gray-100">
+            <button onClick={saveAll} disabled={saving}
+              className="w-full bg-[#0A0A0A] hover:bg-gray-800 text-white py-4 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-colors disabled:opacity-50">
+              {saving ? <Loader2 size={15} className="animate-spin" /> : saved ? <CheckCircle size={15} /> : <Save size={15} />}
+              {saved ? '✓ All settings saved!' : saving ? 'Saving…' : 'Save All Settings'}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
